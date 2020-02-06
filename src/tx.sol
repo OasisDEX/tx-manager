@@ -46,6 +46,10 @@ contract TxManager is DSAuth, DSMath, DSNote {
         uint256 location = 0;
         while (location < script.length) {
             address contractAddress = addressAt(script, location);
+            // if script is ill formatted just break execution
+            if (address(contractAddress) == address(0)) {
+                break;
+            }
             uint256 calldataLength = uint256At(script, location + 0x14);
             uint256 calldataStart = locationOf(script, location + 0x14 + 0x20);
             assembly {
