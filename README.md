@@ -1,24 +1,13 @@
-Overview
-========
+# Overview
 
 This repository contains a transaction manager contract, allowing its owner
 to make multiple contract calls in one Ethereum transaction. This saves time,
 but what's most important it allows things like multi-step arbitrage to be
-executed in one transaction. 
+executed in one transaction.
 
-This transaction manager also helps to deal with ERC20 token transfers.
-If we haven't done anything to solve this issue, the transaction manager contract
-would have to own all funds (ERC20 tokens) any of the calls made by it may need.
-In our approach, requested ERC20 tokens all transferred from the caller to
-the transaction manager contract before the first call is made and returned
-to the caller after the last call.
+NOTE: this is great for testnets but it doesn't implement `auth` so anyone can invoke it. DO NOT USE ON MAINNET.
 
-The transaction manager needs to be approved to access ERC20 tokens.
-Because of that, we only allow the transaction manager to be used only by its owner. 
-
-
-Contract deployment
-===================
+# Contract deployment
 
 The `TxManager` contract takes no parameters.
 
@@ -30,20 +19,13 @@ dapp build
 ETH_GAS=2000000 dapp create TxManager
 ```
 
-
-Contract usage
-==============
+# Contract usage
 
 The contract has only one public function:
 
 ```
-function execute(address[] tokens, bytes script) { … }
+function execute(bytes script) { … }
 ```
-
-The `tokens` parameter is an array of ERC20 token addresses. For each of them,
-the maximum available allowance will be transferred from the caller to the
-contract before the first call. Remaining balances of each of these tokens
-will be returned to the caller after the last call.
 
 The `script` parameter is a byte array representing the sequence of
 contract calls to be made. It consists of multiple call records concatenated
@@ -68,3 +50,42 @@ $ seth calldata 'cork(uint256)' 100
 ```
 
 The script parameter should be a concatenation of records of all calls to be made.
+
+## Typescript Example
+
+```typescript
+import Web3 from "web3";
+
+function padBytes(web3: Web3, calldata: string) {
+  return web3.utils.padRight(calldata, Math.ceil(calldata.length / 32) * 32);
+}
+
+/**
+ * We need to align build string so web3 will convert it to bytes later. This might be avoided if we build whole calldata manually but since we want to avoid it this is the only way. Also, this forced us to add additional check in tx-manager to skip ill formatted calldata
+ */
+export function buildCalls(
+  web3: Web3,
+  calls: { address: string; calldata: any }[]
+) {
+  let finalCalldata = "";
+  for (const call of calls) {
+    const calldata = call.calldata.encodeABI().slice(2);
+
+    finalCalldata +=
+      //tslint:disable-next-line
+      call.address.slice(2) +
+      web3.eth.abi.encodeParameter("uint256", calldata.length / 2).slice(2) +
+      calldata;
+  }
+
+  return "0x" + padBytes(web3, finalCalldata);
+}
+
+const calls = [
+  { address: spot.address, calldata: spot.methods.poke(ilkCode) },
+  { address: jug.address, calldata: jug.methods.init(ilkCode) }
+];
+const calldata = buildCalls(web3, calls);
+
+await txManager.methods.execute(calldata).send();
+```

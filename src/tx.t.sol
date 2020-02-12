@@ -89,7 +89,7 @@ contract TxManagerTest is DSTest {
     }
 
     function testNoTokensNoCalls() {
-        tx.execute(new address[](0), new bytes(0));
+        tx.execute(new bytes(0));
     }
 
     function testNoTokensOneCall() {
@@ -100,7 +100,7 @@ contract TxManagerTest is DSTest {
         bytes memory data = "\x80\x97\x2a\x7d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a";
         bytes memory call = joinBytes(addressToBytes(tester1), uintToBytes(data.length), data);
 
-        tx.execute(new address[](0), call);
+        tx.execute(call);
 
         assertEq(tester1.value(), 10);
         assertEq(tester2.value(), 0);
@@ -118,14 +118,10 @@ contract TxManagerTest is DSTest {
         bytes memory data2 = "\x80\x97\x2a\x7d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0d";
         bytes memory call2 = joinBytes(addressToBytes(tester2), uintToBytes(data2.length), data2);
 
-        tx.execute(new address[](0), joinBytes(call1, call2));
+        tx.execute(joinBytes(call1, call2));
 
         assertEq(tester1.value(), 10);
         assertEq(tester2.value(), 13);
-    }
-
-    function testFailOnFailedTransfer() {
-        tx.execute(tokens(token3), new bytes(0));
     }
 
     function testFailOnFailedCall() {
@@ -133,63 +129,7 @@ contract TxManagerTest is DSTest {
         bytes memory data = "\xa9\xcc\x47\x18";
         bytes memory call = joinBytes(addressToBytes(tester1), uintToBytes(data.length), data);
 
-        tx.execute(new address[](0), call);
-    }
-
-    function testNoTokenTransferIfNotApproved() {
-        // seth calldata 'balance()'
-        bytes memory data = "\xb6\x9e\xf8\xa8";
-        bytes memory call = joinBytes(addressToBytes(tester1), uintToBytes(data.length), data);
-
-        tx.execute(tokens(token1), call);
-
-        assertEq(tester1.value(), 0);
-    }
-
-    function testTransferTokenAllowanceAndReturnFunds() {
-        token1.approve(tx, 1000);
-
-        // seth calldata 'balance()'
-        bytes memory data = "\xb6\x9e\xf8\xa8";
-        bytes memory call = joinBytes(addressToBytes(tester1), uintToBytes(data.length), data);
-
-        tx.execute(tokens(token1), call);
-
-        assertEq(tester1.value(), 1000);
-        assertEq(token1.balanceOf(this), 1000000);
-    }
-
-    function testTransferNoMoreThanTokenBalance() {
-        token1.approve(tx, 1000000000000);
-
-        // seth calldata 'balance()'
-        bytes memory data = "\xb6\x9e\xf8\xa8";
-        bytes memory call = joinBytes(addressToBytes(tester1), uintToBytes(data.length), data);
-
-        tx.execute(tokens(token1), call);
-
-        assertEq(tester1.value(), 1000000);
-    }
-
-    function testTransferTwoTokensAndReturnFunds() {
-        token1.approve(tx, 1000);
-        token2.approve(tx, 1500);
-
-        // seth calldata 'balance()'
-        bytes memory data1 = "\xb6\x9e\xf8\xa8";
-        bytes memory call1 = joinBytes(addressToBytes(tester1), uintToBytes(data1.length), data1);
-        // seth calldata 'balance()'
-        bytes memory data2 = "\xb6\x9e\xf8\xa8";
-        bytes memory call2 = joinBytes(addressToBytes(tester2), uintToBytes(data2.length), data2);
-
-        tx.execute(tokens(token1, token2), joinBytes(call1, call2));
-
-        assertEq(tester1.value(), 1000);
-        assertEq(tester2.value(), 1500);
-
-        // check if funds returned after calls have been made
-        assertEq(token1.balanceOf(this), 1000000);
-        assertEq(token2.balanceOf(this), 2000000);
+        tx.execute(call);
     }
 
     // --- --- ---
